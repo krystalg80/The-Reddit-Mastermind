@@ -211,12 +211,13 @@ export default function Home() {
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
             <div className="flex-1">
-              <p className="font-semibold mb-1">Hi Maddie! 👋</p>
+              <p className="font-semibold mb-1">Hi Maddie!</p>
               <p className="text-sm">
-                Just wanted to give you a heads up - I'm using the free tier of the ChatGPT API, so I do have a quota limit. 
+                Just wanted to give you a heads up, I'm using the free tier of the ChatGPT API, so I do have a quota limit. 
                 If by the time you're actively testing the application you see <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">📝 Template</span> badges instead of 
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 ml-1">🤖 AI</span> badges, 
-                that's because there's no quota available due to the limit. The app will still work perfectly with the template fallbacks - thank you! 🙂
+                that's because there's no quota available due to the limit. The app will still work perfectly with the template fallbacks. 
+                Also, generation takes ~2 minutes due to free tier rate limits (3 requests/minute) - in production with a paid tier, this would be much faster (under 10 seconds). Thank you again :)
               </p>
             </div>
           </div>
