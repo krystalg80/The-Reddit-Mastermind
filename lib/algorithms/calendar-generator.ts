@@ -8,6 +8,7 @@ import {
   ChatGPTQuery 
 } from '@/lib/types';
 import { format, addDays, startOfWeek, endOfWeek, parseISO } from 'date-fns';
+import { generatePostTitle, generatePostContent, generateComment } from '@/lib/ai/chatgpt';
 
 /**
  * Core algorithm for generating Reddit content calendars
@@ -50,7 +51,7 @@ export class CalendarGenerator {
     };
 
     // Generate posts
-    const posts = this.generatePosts(weekStart, weekEnd);
+    const posts = await this.generatePosts(weekStart, weekEnd);
     
     // Calculate quality score
     const qualityScore = this.calculateQualityScore(posts);
@@ -95,7 +96,7 @@ export class CalendarGenerator {
   /**
    * Generate posts distributed across the week
    */
-  private generatePosts(weekStart: Date, weekEnd: Date): CalendarPost[] {
+  private async generatePosts(weekStart: Date, weekEnd: Date): Promise<CalendarPost[]> {
     const posts: CalendarPost[] = [];
     const daysOfWeek = this.getDaysOfWeek(weekStart, weekEnd);
     const totalPosts = this.input.posts_per_week;
@@ -137,8 +138,8 @@ export class CalendarGenerator {
         // Select topic (avoid overlap)
         const topic = this.selectTopic(usedTopics);
         
-        // Generate post content
-        const post = this.generateOriginalPost(
+        // Generate post content (async with ChatGPT)
+        const post = await this.generateOriginalPost(
           persona,
           subreddit,
           topic,
@@ -168,7 +169,7 @@ export class CalendarGenerator {
     }
     
     // Generate comments to create conversation flow
-    const comments = this.generateComments(posts, personaPostCount);
+    const comments = await this.generateComments(posts, personaPostCount);
     posts.push(...comments);
     
     return posts.sort((a, b) => {
@@ -274,22 +275,46 @@ export class CalendarGenerator {
   }
 
   /**
-   * Generate an original post
+   * Generate an original post using ChatGPT
    */
-  private generateOriginalPost(
+  private async generateOriginalPost(
     persona: Persona,
     subreddit: Subreddit,
     topic: ChatGPTQuery,
     scheduledDate: Date,
     index: number
-  ): CalendarPost {
+  ): Promise<CalendarPost> {
     const calendarId = 'temp'; // Will be set after calendar creation
     
-    // Generate title based on topic and persona tone
-    const title = this.generatePostTitle(topic, persona, subreddit);
+    // Generate title using ChatGPT (with fallback to template)
+    let title: string;
+    try {
+      title = await generatePostTitle(
+        topic.query,
+        topic.intent,
+        persona.tone,
+        subreddit.name
+      );
+    } catch (error) {
+      console.warn('ChatGPT title generation failed, using template:', error);
+      title = this.generatePostTitle(topic, persona, subreddit);
+    }
     
-    // Generate content based on persona and topic
-    const content = this.generatePostContent(topic, persona, subreddit);
+    // Generate content using ChatGPT (with fallback to template)
+    let content: string;
+    try {
+      content = await generatePostContent(
+        topic.query,
+        topic.intent,
+        persona.tone,
+        persona.bio,
+        persona.expertise_areas,
+        subreddit.name
+      );
+    } catch (error) {
+      console.warn('ChatGPT content generation failed, using template:', error);
+      content = this.generatePostContent(topic, persona, subreddit);
+    }
     
     // Distribute posts throughout the day (9 AM - 9 PM)
     const hour = 9 + Math.floor(Math.random() * 12);
@@ -309,12 +334,12 @@ export class CalendarGenerator {
   }
 
   /**
-   * Generate comments to create natural conversation flow
+   * Generate comments to create natural conversation flow using ChatGPT
    */
-  private generateComments(
+  private async generateComments(
     originalPosts: CalendarPost[],
     personaPostCount: Map<string, number>
-  ): CalendarPost[] {
+  ): Promise<CalendarPost[]> {
     const comments: CalendarPost[] = [];
     
     // For each original post, potentially add 1-2 comments from other personas
@@ -345,7 +370,36 @@ export class CalendarGenerator {
             commentDate = addDays(commentDate, 1);
           }
           
-          const commentContent = this.generateCommentContent(post, commenter);
+          // Find the original topic used for this post to get better context
+          const originalTopic = this.findTopicForPost(post);
+          
+          // Generate comment using ChatGPT (with fallback to template)
+          let commentContent: string;
+          try {
+            const commentTypes: Array<'share_experience' | 'add_value' | 'agree_and_expand' | 'ask_followup' | 'provide_tip' | 'relate_personally'> = [
+              'share_experience',
+              'add_value',
+              'agree_and_expand',
+              'ask_followup',
+              'provide_tip',
+              'relate_personally'
+            ];
+            const commentType = commentTypes[Math.floor(Math.random() * commentTypes.length)];
+            
+            commentContent = await generateComment(
+              post.title,
+              post.content,
+              originalTopic?.query || this.extractTopicFromTitle(post.title),
+              originalTopic?.intent || 'question',
+              commenter.tone,
+              commenter.bio,
+              commenter.expertise_areas,
+              commentType
+            );
+          } catch (error) {
+            console.warn('ChatGPT comment generation failed, using template:', error);
+            commentContent = this.generateCommentContent(post, commenter, originalTopic);
+          }
           
           comments.push({
             calendar_id: post.calendar_id,
@@ -454,17 +508,55 @@ export class CalendarGenerator {
   }
 
   /**
-   * Generate comment content - varied and natural responses
+   * Find the original topic/query used for a post
+   */
+  private findTopicForPost(post: CalendarPost): ChatGPTQuery | null {
+    // Try to match the post title/content with a query
+    const titleLower = post.title.toLowerCase();
+    const contentLower = post.content.toLowerCase();
+    
+    for (const query of this.input.chatgpt_queries) {
+      const queryLower = query.query.toLowerCase();
+      // Check if query appears in title or content
+      if (titleLower.includes(queryLower) || contentLower.includes(queryLower)) {
+        return query;
+      }
+    }
+    
+    // Fallback: extract from title
+    const extracted = this.extractTopicFromTitle(post.title);
+    return { 
+      query: extracted, 
+      intent: 'question',
+      company_id: this.input.company.id || ''
+    };
+  }
+
+  /**
+   * Generate comment content - varied and natural responses that actually make sense
    */
   private generateCommentContent(
     originalPost: CalendarPost,
-    commenter: Persona
+    commenter: Persona,
+    topic: ChatGPTQuery | null
   ): string {
     const tone = commenter.tone;
     const expertise = commenter.expertise_areas.join(', ');
     
-    // Extract actual topic/keywords from the post title (remove question words)
-    const keyTerms = this.extractTopicFromTitle(originalPost.title);
+    // Use the actual topic query if available, otherwise extract from title
+    const keyTerms = topic ? topic.query : this.extractTopicFromTitle(originalPost.title);
+    const intent = topic?.intent || 'question';
+    
+    // Determine if this is a tool/product name vs a question/how-to
+    const isToolOrProduct = this.isToolOrProduct(keyTerms);
+    const isHowToQuestion = keyTerms.toLowerCase().includes('how to') || 
+                            keyTerms.toLowerCase().includes('how do') ||
+                            keyTerms.toLowerCase().startsWith('how');
+    
+    // Determine what the post is asking for based on intent
+    const isAskingForRecommendation = intent === 'question' || intent === 'advice';
+    const isAskingForOpinion = intent === 'discussion';
+    const isAskingForReview = intent === 'review';
     
     // Different comment types for variety
     const commentTypes = [
@@ -482,101 +574,253 @@ export class CalendarGenerator {
     if (tone === 'casual') {
       switch (commentType) {
         case 'share_experience':
-          content = `I've actually been using ${keyTerms} for a while now. `;
-          if (expertise) {
-            content += `Coming from ${expertise}, `;
+          if (isToolOrProduct && isAskingForRecommendation) {
+            content = `I've been using ${keyTerms} for about 6 months now. `;
+            if (expertise) {
+              content += `I'm in ${expertise}, `;
+            }
+            content += `and it's been working really well for my needs. `;
+            content += `The learning curve wasn't too steep, which was a plus. `;
+            content += `What are you hoping to use it for?`;
+          } else if (isHowToQuestion) {
+            content = `I've been doing ${keyTerms} for a while now. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `the key is finding a workflow that works for you. `;
+            content += `I've found that starting with the basics and building from there helps a lot. `;
+            content += `What's your current process like?`;
+          } else {
+            content = `I've had experience with ${keyTerms}. `;
+            if (expertise) {
+              content += `From a ${expertise} perspective, `;
+            }
+            content += `it's been pretty solid overall. `;
+            content += `Happy to share more details if you have specific questions.`;
           }
-          content += `it's been pretty solid for my workflow. `;
-          content += `The main thing I'd watch out for with ${keyTerms} is making sure it fits your specific use case.`;
           break;
         case 'add_value':
-          content = `This is a solid question about ${keyTerms}. `;
-          if (expertise) {
-            content += `I work in ${expertise} and `;
+          if (isToolOrProduct && isAskingForRecommendation) {
+            content = `I'd definitely recommend checking out ${keyTerms}. `;
+            if (expertise) {
+              content += `I work in ${expertise} and `;
+            }
+            content += `it's saved me a ton of time. `;
+            content += `The main thing I like is how straightforward it is to get started. `;
+            content += `What's your main use case?`;
+          } else if (isHowToQuestion) {
+            content = `For ${keyTerms}, `;
+            if (expertise) {
+              content += `I've found that in ${expertise}, `;
+            }
+            content += `the best approach is to start with templates or examples. `;
+            content += `That way you can see what works and adapt it to your needs. `;
+            content += `Have you tried that approach?`;
+          } else {
+            content = `Good question! `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `I've found ${keyTerms} to be really useful. `;
+            content += `The key is finding the right approach for your workflow.`;
           }
-          content += `one thing that's helped me with ${keyTerms} is focusing on the fundamentals first. `;
-          content += `Once you get those down, the rest falls into place.`;
           break;
         case 'agree_and_expand':
-          content = `Totally agree with this. `;
-          if (expertise) {
-            content += `In my experience with ${expertise}, `;
+          if (isToolOrProduct) {
+            content = `Yeah, ${keyTerms} is worth looking into. `;
+            if (expertise) {
+              content += `I've been using it for ${expertise} work and `;
+            }
+            content += `it's made things a lot easier. `;
+            const aspects = ['automation features', 'user interface', 'integration options', 'customization', 'speed'];
+            const aspect = aspects[Math.floor(Math.random() * aspects.length)];
+            content += `The best part is probably how it handles ${aspect}. `;
+            content += `Have you tried it yet or still researching?`;
+          } else if (isHowToQuestion) {
+            content = `Yeah, ${keyTerms} is definitely doable. `;
+            if (expertise) {
+              content += `I do this regularly in ${expertise} and `;
+            }
+            content += `there are a few tricks that help. `;
+            content += `The main thing is to set up a good workflow from the start. `;
+            content += `What's your current setup?`;
+          } else {
+            content = `I agree this is worth exploring. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `${keyTerms} can be really helpful. `;
+            content += `What are you hoping to accomplish?`;
           }
-          content += `I've noticed that ${keyTerms} works best when you pair it with good planning. `;
-          content += `What's your main use case for ${keyTerms}?`;
           break;
         case 'ask_followup':
-          content = `Interesting question about ${keyTerms}! `;
-          if (expertise) {
-            content += `I'm curious - in ${expertise}, `;
+          if (isHowToQuestion) {
+            content = `What's your current process for ${keyTerms}? `;
+            if (expertise) {
+              content += `I'm in ${expertise} and `;
+            }
+            content += `might be able to suggest some improvements based on what you're already doing.`;
+          } else {
+            content = `What are you trying to accomplish with ${keyTerms}? `;
+            if (expertise) {
+              content += `I'm in ${expertise} and `;
+            }
+            content += `might be able to give you more targeted advice based on your specific needs.`;
           }
-          content += `what specific challenges are you running into? `;
-          content += `Might be able to share some relevant insights based on my experience with ${keyTerms}.`;
           break;
         case 'provide_tip':
-          content = `Quick tip about ${keyTerms}: `;
-          if (expertise) {
-            content += `since you're in ${expertise}, `;
+          if (isHowToQuestion) {
+            content = `For ${keyTerms}, `;
+            if (expertise) {
+              content += `in ${expertise} I've found that `;
+            }
+            content += `using templates or shortcuts helps a lot. `;
+            content += `Start with the basics and then build up your workflow from there. `;
+            content += `That's what worked for me!`;
+          } else if (isToolOrProduct) {
+            content = `My advice: start with a trial or free version of ${keyTerms} if they offer one. `;
+            if (expertise) {
+              content += `That's what I did when I was working on ${expertise} projects, `;
+            }
+            content += `and it helped me figure out if it was the right fit before committing. `;
+            content += `Worth checking out!`;
+          } else {
+            content = `One thing that's helped me: `;
+            if (expertise) {
+              content += `in ${expertise}, `;
+            }
+            content += `I focus on ${keyTerms} by breaking it down into smaller steps. `;
+            content += `Makes it much more manageable.`;
           }
-          content += `I'd recommend starting small and then scaling up. `;
-          content += `That's what worked for me with ${keyTerms} anyway.`;
           break;
         default: // relate_personally
-          content = `I was in a similar spot not too long ago with ${keyTerms}. `;
-          if (expertise) {
-            content += `Working with ${expertise}, `;
+          if (isHowToQuestion) {
+            content = `I was trying to figure out ${keyTerms} not too long ago! `;
+            if (expertise) {
+              content += `Working in ${expertise}, `;
+            }
+            content += `I found that the key is to start simple and iterate. `;
+            content += `What's your current approach?`;
+          } else if (isToolOrProduct) {
+            content = `I was in the same boat a few months ago! `;
+            if (expertise) {
+              content += `Working in ${expertise}, `;
+            }
+            content += `I ended up going with ${keyTerms} and it's been great. `;
+            content += `What made you start looking into this?`;
+          } else {
+            content = `I've been working on ${keyTerms} for a while. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `it's been really helpful for my workflow. `;
+            content += `What are you hoping to achieve?`;
           }
-          content += `I found that it really depends on your specific situation. `;
-          content += `What's your main goal with ${keyTerms}?`;
       }
     } else if (tone === 'professional') {
       switch (commentType) {
         case 'share_experience':
-          content = `I've implemented ${keyTerms} in several projects. `;
-          if (expertise) {
-            content += `With a background in ${expertise}, `;
+          if (isToolOrProduct && isAskingForRecommendation) {
+            content = `We've been using ${keyTerms} for the past year. `;
+            if (expertise) {
+              content += `Our team works in ${expertise}, `;
+            }
+            content += `and it's been effective for our use cases. `;
+            content += `The ROI has been solid, especially in terms of time saved. `;
+            content += `What's your primary objective with this?`;
+          } else if (isHowToQuestion) {
+            content = `We've been implementing ${keyTerms} in our workflow. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `the key has been establishing clear processes from the start. `;
+            content += `It's made a significant difference in our efficiency. `;
+            content += `What's your current approach?`;
+          } else {
+            content = `I've had good results with ${keyTerms}. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `it addresses the key pain points we were facing. `;
+            content += `Happy to discuss specifics if helpful.`;
           }
-          content += `I can share that the key is understanding your requirements first. `;
-          content += `Have you mapped those out yet?`;
           break;
         case 'add_value':
-          content = `This is an important consideration. `;
-          if (expertise) {
-            content += `From my perspective in ${expertise}, `;
+          if (isToolOrProduct && isAskingForRecommendation) {
+            content = `I'd recommend ${keyTerms} based on my experience. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `it's proven to be reliable and efficient. `;
+            content += `The implementation was straightforward, which was important for us. `;
+            content += `What are your main requirements?`;
+          } else if (isHowToQuestion) {
+            content = `For ${keyTerms}, `;
+            if (expertise) {
+              content += `in ${expertise} I've found that `;
+            }
+            content += `establishing a systematic approach works best. `;
+            content += `Start with the core process and then optimize from there. `;
+            content += `Have you mapped out your current workflow?`;
+          } else {
+            content = `This is worth exploring. `;
+            if (expertise) {
+              content += `From a ${expertise} standpoint, `;
+            }
+            content += `${keyTerms} can be quite valuable. `;
+            content += `The key is ensuring it aligns with your workflow.`;
           }
-          content += `I'd recommend evaluating ${keyTerms} against your specific objectives. `;
-          content += `What metrics matter most for your use case?`;
           break;
         case 'agree_and_expand':
-          content = `I agree with this approach. `;
-          if (expertise) {
-            content += `In ${expertise}, we've found that `;
+          if (isToolOrProduct) {
+            content = `I agree that ${keyTerms} is worth considering. `;
+            if (expertise) {
+              content += `We've implemented it in ${expertise} contexts and `;
+            }
+            content += `seen positive results. `;
+            const professionalAspects = ['integration capabilities', 'scalability', 'user experience', 'reporting features', 'security'];
+            const aspect = professionalAspects[Math.floor(Math.random() * professionalAspects.length)];
+            content += `The ${aspect} have been particularly strong. `;
+            content += `Are you evaluating multiple options or focused on this one?`;
+          } else if (isHowToQuestion) {
+            content = `I agree that ${keyTerms} is achievable. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `we've found that having a structured approach helps significantly. `;
+            content += `The key is consistency and iteration. `;
+            content += `What challenges are you facing?`;
+          } else {
+            content = `I agree this is worth exploring. `;
+            if (expertise) {
+              content += `In ${expertise}, `;
+            }
+            content += `${keyTerms} can be quite valuable. `;
+            content += `What are your main goals?`;
           }
-          content += `${keyTerms} tends to work well when integrated thoughtfully. `;
-          content += `Have you considered the long-term implications?`;
           break;
         case 'ask_followup':
-          content = `To better understand your situation: `;
+          content = `To provide more relevant guidance: `;
           if (expertise) {
-            content += `are you working within ${expertise}? `;
+            content += `what's your experience level with ${expertise}? `;
           }
-          content += `The context would help me provide more targeted advice about ${keyTerms}.`;
+          content += `Understanding your context would help me give better recommendations for ${keyTerms}.`;
           break;
         case 'provide_tip':
-          content = `One recommendation: `;
+          content = `My recommendation: start with a proof of concept for ${keyTerms}. `;
           if (expertise) {
-            content += `based on ${expertise} best practices, `;
+            content += `That's what we did in ${expertise}, `;
           }
-          content += `I'd suggest starting with a pilot for ${keyTerms} before full implementation. `;
-          content += `This allows you to validate the approach.`;
+          content += `and it helped us validate the fit before committing fully. `;
+          content += `It's a low-risk way to evaluate.`;
           break;
         default: // relate_personally
-          content = `I've encountered similar challenges. `;
+          content = `We faced a similar decision recently. `;
           if (expertise) {
-            content += `In ${expertise}, `;
+            content += `In our ${expertise} work, `;
           }
-          content += `the solution often depends on your specific constraints. `;
-          content += `What's your timeline looking like for ${keyTerms}?`;
+          content += `we ended up choosing ${keyTerms} and it's worked well. `;
+          content += `What's driving your interest in this?`;
       }
     } else if (tone === 'technical') {
       switch (commentType) {
@@ -739,6 +983,27 @@ export class CalendarGenerator {
     // Simple extraction - take first 5-7 words
     const words = query.split(' ').slice(0, 7);
     return words.join(' ');
+  }
+
+  /**
+   * Check if key terms refer to a tool/product vs a question
+   */
+  private isToolOrProduct(keyTerms: string): boolean {
+    const lower = keyTerms.toLowerCase();
+    // If it starts with "how to", "how do", "what is", etc., it's a question
+    if (lower.startsWith('how to') || lower.startsWith('how do') || 
+        lower.startsWith('what is') || lower.startsWith('what are') ||
+        lower.startsWith('why') || lower.startsWith('when') || lower.startsWith('where')) {
+      return false;
+    }
+    // If it contains "tool", "software", "app", "platform", "service", it's likely a product
+    if (lower.includes('tool') || lower.includes('software') || lower.includes('app') ||
+        lower.includes('platform') || lower.includes('service') || lower.includes('alternative')) {
+      return true;
+    }
+    // Short phrases (1-3 words) are more likely to be product names
+    const wordCount = keyTerms.split(' ').length;
+    return wordCount <= 3;
   }
 
   /**

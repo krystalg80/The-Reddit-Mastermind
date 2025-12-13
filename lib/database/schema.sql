@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS subreddits (
   UNIQUE(company_id, name)
 );
 
--- The ChatGPT queries table (dont forget to setup the chatgpt api key in the .env file)
+-- The ChatGPT queries table (REQUIRED: Add OPENAI_API_KEY to your .env.local file for AI-generated content)
 CREATE TABLE IF NOT EXISTS chatgpt_queries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
