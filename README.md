@@ -169,12 +169,7 @@ The algorithm evaluates:
 
 ## Rate Limiting
 
-I added rate limiting to respect OpenAI's free tier limits (3 RPM):
-- Adds 20-second delays between API calls
-- Prevents hitting rate limits
-- Can be disabled for paid tiers (set `isFreeTier = false` in `rate-limiter.ts`)
-
-**Note**: Generation takes ~2 minutes with free tier due to rate limiting. In production with a paid tier, this would be under 10 seconds.
+Rate limiting has been disabled for faster demo experience. The app will make API calls as quickly as possible, which provides a better user experience for client demos. Note that this most likely will hit free tier limits, but regardless there will be an output which will likely be the fall back responses shown in the app. 
 
 ## File Structure
 
@@ -236,7 +231,7 @@ Deployed on Vercel. Made sure to set environment variables
 
 - The app works perfectly without OpenAI API key (uses templates)
 - If you see template badges, it means ChatGPT quota was exceeded (expected on free tier)
-- Generation takes ~2 minutes due to rate limiting (normal for free tier)
+- Generation is fast for optimal demo experience (rate limiting disabled)
 - All data persists in Supabase and localStorage
 
 ## Development Tools

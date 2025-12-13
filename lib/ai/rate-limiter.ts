@@ -15,20 +15,9 @@ class RateLimiter {
   private readonly isFreeTier: boolean = true; // Set to false if you upgrade to paid tier
 
   async waitForNextCall(): Promise<void> {
-    // Skip rate limiting if not on free tier (paid tiers have higher limits)
-    if (!this.isFreeTier) {
-      return;
-    }
-    
-    const now = Date.now();
-    const timeSinceLastCall = now - this.lastCallTime;
-    
-    if (timeSinceLastCall < this.minDelayMs) {
-      const waitTime = this.minDelayMs - timeSinceLastCall;
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    
-    this.lastCallTime = Date.now();
+    // Rate limiting disabled for faster demo experience
+    // Note: This may hit free tier limits, but provides better UX for client demos
+    return;
   }
 }
 

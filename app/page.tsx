@@ -216,8 +216,7 @@ export default function Home() {
                 Just wanted to give you a heads up, I&apos;m using the free tier of the ChatGPT API, so I do have a quota limit. 
                 If by the time you&apos;re actively testing the application you see <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">📝 Template</span> badges instead of 
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 ml-1">🤖 AI</span> badges, 
-                that&apos;s because there&apos;s no quota available due to the limit. The app will still work perfectly with the template fallbacks. 
-                Also, generation takes ~2 minutes due to free tier rate limits (3 requests/minute) - in production with a paid tier, this would be much faster (under 10 seconds). Thank you again :)
+                that&apos;s because there&apos;s no quota available due to the limit. The app will still work perfectly with the template fallbacks. Thank you again :)
               </p>
             </div>
           </div>
