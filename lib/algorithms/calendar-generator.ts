@@ -295,8 +295,18 @@ export class CalendarGenerator {
         persona.tone,
         subreddit.name
       );
-    } catch (error) {
-      console.warn('ChatGPT title generation failed, using template:', error);
+    } catch (error: any) {
+      // Check if it's a quota/rate limit error - fall back gracefully
+      const isQuotaError = error?.code === 'insufficient_quota' || 
+                          error?.type === 'insufficient_quota' ||
+                          error?.message?.includes('quota') ||
+                          error?.message?.includes('rate limit');
+      
+      if (isQuotaError) {
+        console.warn('OpenAI quota exceeded, using template fallback for title');
+      } else {
+        console.warn('ChatGPT title generation failed, using template:', error);
+      }
       title = this.generatePostTitle(topic, persona, subreddit);
     }
     
@@ -311,8 +321,18 @@ export class CalendarGenerator {
         persona.expertise_areas,
         subreddit.name
       );
-    } catch (error) {
-      console.warn('ChatGPT content generation failed, using template:', error);
+    } catch (error: any) {
+      // Check if it's a quota/rate limit error - fall back gracefully
+      const isQuotaError = error?.code === 'insufficient_quota' || 
+                          error?.type === 'insufficient_quota' ||
+                          error?.message?.includes('quota') ||
+                          error?.message?.includes('rate limit');
+      
+      if (isQuotaError) {
+        console.warn('OpenAI quota exceeded, using template fallback for content');
+      } else {
+        console.warn('ChatGPT content generation failed, using template:', error);
+      }
       content = this.generatePostContent(topic, persona, subreddit);
     }
     
@@ -342,26 +362,39 @@ export class CalendarGenerator {
   ): Promise<CalendarPost[]> {
     const comments: CalendarPost[] = [];
     
-    // For each original post, potentially add 1-2 comments from other personas
+    // For each original post, ensure it gets at least one comment from another persona
+    // This matches the business goal: "When we create posts and have our own accounts reply, clients get way more inbound"
     for (const post of originalPosts) {
       if (post.post_type !== 'original') continue;
       
-      // 60% chance of getting a comment
-      if (Math.random() < 0.6) {
-        // Select a different persona
-        const otherPersonas = this.input.personas.filter(
-          p => (p.id || p.name) !== post.persona_id
-        );
+      // Select a different persona to comment
+      const otherPersonas = this.input.personas.filter(
+        p => (p.id || p.name) !== post.persona_id
+      );
+      
+      if (otherPersonas.length > 0) {
+        // Always add at least one comment per post
+        const numComments = Math.random() < 0.3 ? 2 : 1; // 30% chance of 2 comments, 70% chance of 1
         
-        if (otherPersonas.length > 0) {
-          const commenter = otherPersonas[
-            Math.floor(Math.random() * otherPersonas.length)
+        for (let i = 0; i < numComments; i++) {
+          // Select a different persona for each comment (avoid same persona commenting twice on same post)
+          const availablePersonas = otherPersonas.filter(
+            p => !comments.some(c => c.parent_post_id === post.id && c.persona_id === (p.id || p.name))
+          );
+          
+          if (availablePersonas.length === 0) break; // No more personas available
+          
+          const commenter = availablePersonas[
+            Math.floor(Math.random() * availablePersonas.length)
           ];
           
-          // Comment should be posted 2-6 hours after original
+          // Comment should be posted 2-6 hours after original (or after previous comment if multiple)
           const postDate = parseISO(post.scheduled_date);
           const [postHour, postMinute] = post.scheduled_time.split(':').map(Number);
-          const commentHour = Math.min(21, postHour + 2 + Math.floor(Math.random() * 4));
+          
+          // If this is a second comment, space it out more
+          const hoursAfterPost = i === 0 ? 2 + Math.floor(Math.random() * 4) : 4 + Math.floor(Math.random() * 3);
+          const commentHour = Math.min(21, postHour + hoursAfterPost);
           const commentMinute = Math.floor(Math.random() * 4) * 15;
           
           // If comment hour exceeds same day, move to next day
@@ -396,8 +429,18 @@ export class CalendarGenerator {
               commenter.expertise_areas,
               commentType
             );
-          } catch (error) {
-            console.warn('ChatGPT comment generation failed, using template:', error);
+          } catch (error: any) {
+            // Check if it's a quota/rate limit error - fall back gracefully
+            const isQuotaError = error?.code === 'insufficient_quota' || 
+                                error?.type === 'insufficient_quota' ||
+                                error?.message?.includes('quota') ||
+                                error?.message?.includes('rate limit');
+            
+            if (isQuotaError) {
+              console.warn('OpenAI quota exceeded, using template fallback for comment');
+            } else {
+              console.warn('ChatGPT comment generation failed, using template:', error);
+            }
             commentContent = this.generateCommentContent(post, commenter, originalTopic);
           }
           
@@ -454,6 +497,7 @@ export class CalendarGenerator {
 
   /**
    * Generate post content
+   * IF OPENAI FAILS, THIS IS THE FALLBACK!!!!
    */
   private generatePostContent(
     topic: ChatGPTQuery,
