@@ -50,6 +50,9 @@ export interface CalendarPost {
   parent_post_id?: string; // For comments
   status: 'pending' | 'scheduled' | 'posted';
   created_at?: string;
+  // Metadata for tracking content source
+  title_source?: 'chatgpt' | 'template';
+  content_source?: 'chatgpt' | 'template';
 }
 
 export interface ContentCalendar {

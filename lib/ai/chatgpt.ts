@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { rateLimiter } from './rate-limiter';
 
 // Initialize OpenAI client only if API key is available
 let openai: OpenAI | null = null;
@@ -23,6 +24,9 @@ export async function generatePostTitle(
   if (!openai) {
     throw new Error('OpenAI API key not configured');
   }
+  
+  // Rate limit: wait before making API call (respects 3 RPM limit)
+  await rateLimiter.waitForNextCall();
   
   try {
     const prompt = `Generate a natural, engaging Reddit post title for r/${subredditName}. 
@@ -73,6 +77,9 @@ export async function generatePostContent(
   if (!openai) {
     throw new Error('OpenAI API key not configured');
   }
+  
+  // Rate limit: wait before making API call (respects 3 RPM limit)
+  await rateLimiter.waitForNextCall();
   
   try {
     const expertise = expertiseAreas.length > 0 ? expertiseAreas.join(', ') : 'general';
@@ -129,6 +136,9 @@ export async function generateComment(
   if (!openai) {
     throw new Error('OpenAI API key not configured');
   }
+  
+  // Rate limit: wait before making API call (respects 3 RPM limit)
+  await rateLimiter.waitForNextCall();
   
   try {
     const expertise = expertiseAreas.length > 0 ? expertiseAreas.join(', ') : 'general';

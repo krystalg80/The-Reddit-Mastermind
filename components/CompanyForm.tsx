@@ -18,7 +18,7 @@ export default function CompanyForm({ company, onCompanyChange }: CompanyFormPro
   });
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  // Update form data when company prop changes (e.g., after import)
+  // Update form data when company prop changes (e.g., after import or clear)
   useEffect(() => {
     if (company) {
       setFormData({
@@ -32,6 +32,16 @@ export default function CompanyForm({ company, onCompanyChange }: CompanyFormPro
       if (company.name && company.description) {
         setIsCollapsed(true);
       }
+    } else {
+      // Clear form when company is null
+      setFormData({
+        name: '',
+        description: '',
+        website: '',
+        industry: '',
+        target_audience: '',
+      });
+      setIsCollapsed(false);
     }
   }, [company]);
 

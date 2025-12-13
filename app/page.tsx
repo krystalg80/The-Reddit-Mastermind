@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Company, Persona, Subreddit, ChatGPTQuery, ContentCalendar, CalendarPost } from '@/lib/types';
 import CompanyForm from '@/components/CompanyForm';
 import PersonaManager from '@/components/PersonaManager';
@@ -9,6 +9,16 @@ import QueryManager from '@/components/QueryManager';
 import CalendarDisplay from '@/components/CalendarDisplay';
 import DataImporter from '@/components/DataImporter';
 import { format, startOfWeek, addWeeks } from 'date-fns';
+
+const STORAGE_KEY = 'reddit-mastermind-data';
+
+interface StoredData {
+  company: Company | null;
+  personas: Persona[];
+  subreddits: Subreddit[];
+  chatgptQueries: ChatGPTQuery[];
+  postsPerWeek: number;
+}
 
 export default function Home() {
   const [company, setCompany] = useState<Company | null>(null);
@@ -21,6 +31,53 @@ export default function Home() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+
+  // Load data from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const data: StoredData = JSON.parse(stored);
+        if (data.company) setCompany(data.company);
+        if (data.personas?.length > 0) setPersonas(data.personas);
+        if (data.subreddits?.length > 0) setSubreddits(data.subreddits);
+        if (data.chatgptQueries?.length > 0) setChatgptQueries(data.chatgptQueries);
+        if (data.postsPerWeek) setPostsPerWeek(data.postsPerWeek);
+      }
+    } catch (error) {
+      console.warn('Failed to load data from localStorage:', error);
+    }
+  }, []);
+
+  // Save data to localStorage whenever it changes
+  useEffect(() => {
+    try {
+      const data: StoredData = {
+        company,
+        personas,
+        subreddits,
+        chatgptQueries,
+        postsPerWeek,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.warn('Failed to save data to localStorage:', error);
+    }
+  }, [company, personas, subreddits, chatgptQueries, postsPerWeek]);
+
+  // Clear all data (for CSV import or manual reset)
+  const handleClearData = () => {
+    if (confirm('Are you sure you want to clear all data? This will reset the form.')) {
+      setCompany(null);
+      setPersonas([]);
+      setSubreddits([]);
+      setChatgptQueries([]);
+      setPostsPerWeek(5);
+      setCurrentCalendar(null);
+      setCurrentPosts([]);
+      localStorage.removeItem(STORAGE_KEY);
+    }
+  };
 
   const handleGenerateCalendar = async () => {
     if (!company || personas.length < 2 || subreddits.length === 0 || chatgptQueries.length === 0) {
@@ -147,6 +204,24 @@ export default function Home() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Personal note for Maddie */}
+        <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-800 px-6 py-4 rounded-lg mb-6 shadow-soft">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 mr-3 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="flex-1">
+              <p className="font-semibold mb-1">Hi Maddie! 👋</p>
+              <p className="text-sm">
+                Just wanted to give you a heads up - I'm using the free tier of the ChatGPT API, so I do have a quota limit. 
+                If by the time you're actively testing the application you see <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">📝 Template</span> badges instead of 
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 ml-1">🤖 AI</span> badges, 
+                that's because there's no quota available due to the limit. The app will still work perfectly with the template fallbacks - thank you! 🙂
+              </p>
+            </div>
+          </div>
+        </div>
+
         {error && (
           <div className="bg-red-50 border-l-4 border-red-500 text-red-800 px-6 py-4 rounded-lg mb-6 shadow-soft">
             <div className="flex items-center">
@@ -177,32 +252,44 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Left Column - Input Forms */}
           <div className="space-y-6">
-            <DataImporter 
-              onDataImported={(data) => {
-                console.log('Received imported data:', data);
-                // Always set company if it exists and has data
-                if (data.company) {
-                  console.log('Setting company:', data.company);
-                  setCompany(data.company);
-                }
-                if (data.personas.length > 0) {
-                  console.log('Setting personas:', data.personas.length);
-                  setPersonas(data.personas);
-                }
-                if (data.subreddits.length > 0) {
-                  console.log('Setting subreddits:', data.subreddits.length);
-                  setSubreddits(data.subreddits);
-                }
-                if (data.queries.length > 0) {
-                  console.log('Setting queries:', data.queries.length);
-                  setChatgptQueries(data.queries);
-                }
-                if (data.postsPerWeek) {
-                  console.log('Setting posts per week:', data.postsPerWeek);
-                  setPostsPerWeek(data.postsPerWeek);
-                }
-              }}
-            />
+            <div className="bg-white p-6 rounded-xl shadow-soft border border-gray-100">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Data Import</h2>
+                <button
+                  onClick={handleClearData}
+                  className="text-sm text-red-600 hover:text-red-700 font-medium transition-colors"
+                  title="Clear all data to start fresh or import new CSV"
+                >
+                  Clear Data
+                </button>
+              </div>
+              <DataImporter 
+                onDataImported={(data) => {
+                  console.log('Received imported data:', data);
+                  // CSV import overwrites existing data
+                  if (data.company) {
+                    console.log('Setting company:', data.company);
+                    setCompany(data.company);
+                  }
+                  if (data.personas.length > 0) {
+                    console.log('Setting personas:', data.personas.length);
+                    setPersonas(data.personas);
+                  }
+                  if (data.subreddits.length > 0) {
+                    console.log('Setting subreddits:', data.subreddits.length);
+                    setSubreddits(data.subreddits);
+                  }
+                  if (data.queries.length > 0) {
+                    console.log('Setting queries:', data.queries.length);
+                    setChatgptQueries(data.queries);
+                  }
+                  if (data.postsPerWeek) {
+                    console.log('Setting posts per week:', data.postsPerWeek);
+                    setPostsPerWeek(data.postsPerWeek);
+                  }
+                }}
+              />
+            </div>
             <CompanyForm company={company} onCompanyChange={setCompany} />
             
             <PersonaManager 
