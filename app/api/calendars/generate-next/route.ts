@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Insert posts
+    // Insert posts (including source tracking)
     const postsWithCalendarId = result.posts.map(post => ({
       ...post,
       calendar_id: calendar.id,

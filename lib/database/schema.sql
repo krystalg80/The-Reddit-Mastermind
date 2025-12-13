@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS subreddits (
   UNIQUE(company_id, name)
 );
 
--- The ChatGPT queries table (dont forget to setup the chatgpt api key in the .env file)
+-- The ChatGPT queries table (REQUIRED: Add OPENAI_API_KEY to your .env.local file for AI-generated content)
 CREATE TABLE IF NOT EXISTS chatgpt_queries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   company_id UUID NOT NULL REFERENCES companies(id) ON DELETE CASCADE,
@@ -70,6 +70,8 @@ CREATE TABLE IF NOT EXISTS calendar_posts (
   post_type TEXT NOT NULL CHECK (post_type IN ('original', 'comment')),
   parent_post_id UUID REFERENCES calendar_posts(id) ON DELETE CASCADE,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'posted')),
+  title_source TEXT CHECK (title_source IN ('chatgpt', 'template')), -- Track if title was AI-generated or template
+  content_source TEXT CHECK (content_source IN ('chatgpt', 'template')), -- Track if content was AI-generated or template
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -83,4 +85,10 @@ CREATE INDEX IF NOT EXISTS idx_calendar_posts_calendar_id ON calendar_posts(cale
 CREATE INDEX IF NOT EXISTS idx_calendar_posts_scheduled_date ON calendar_posts(scheduled_date);
 CREATE INDEX IF NOT EXISTS idx_calendar_posts_persona_id ON calendar_posts(persona_id);
 CREATE INDEX IF NOT EXISTS idx_calendar_posts_subreddit_id ON calendar_posts(subreddit_id);
+
+-- Migration: Add title_source and content_source columns to calendar_posts table
+-- This adds the columns if they don't already exist (safe to run multiple times)
+ALTER TABLE calendar_posts 
+ADD COLUMN IF NOT EXISTS title_source TEXT CHECK (title_source IN ('chatgpt', 'template')),
+ADD COLUMN IF NOT EXISTS content_source TEXT CHECK (content_source IN ('chatgpt', 'template'));
 

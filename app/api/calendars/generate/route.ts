@@ -129,7 +129,32 @@ export async function POST(request: NextRequest) {
     });
     const result = await generator.generate();
     
-    // Insert calendar
+    // Check if calendar already exists for this week (to allow regeneration)
+    const weekStartDate = result.calendar.week_start_date;
+    const { data: existingCalendar } = await supabase
+      .from('content_calendars')
+      .select('id')
+      .eq('company_id', companyId)
+      .eq('week_start_date', weekStartDate)
+      .single();
+    
+    // If calendar exists, delete it (posts will be deleted via CASCADE)
+    if (existingCalendar) {
+      const { error: deleteError } = await supabase
+        .from('content_calendars')
+        .delete()
+        .eq('id', existingCalendar.id);
+      
+      if (deleteError) {
+        console.error('Error deleting existing calendar:', deleteError);
+        return NextResponse.json(
+          { error: 'Failed to regenerate calendar', details: deleteError.message },
+          { status: 500 }
+        );
+      }
+    }
+    
+    // Insert new calendar
     const { data: calendar, error: calendarError } = await supabase
       .from('content_calendars')
       .insert({
@@ -150,7 +175,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Insert posts with calendar_id
+    // Insert posts with calendar_id (including source tracking)
     const postsWithCalendarId = result.posts.map(post => ({
       ...post,
       calendar_id: calendar.id,

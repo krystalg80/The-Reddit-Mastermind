@@ -9,7 +9,7 @@ interface SubredditManagerProps {
   onSubredditsChange: (subreddits: Subreddit[]) => void;
 }
 
-export default function SubredditManager({ subreddits, onSubredditsChange }: SubredditManagerProps) {
+export default function SubredditManager({ companyId, subreddits, onSubredditsChange }: SubredditManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newSubreddit, setNewSubreddit] = useState<Partial<Subreddit>>({
     name: '',
@@ -46,32 +46,32 @@ export default function SubredditManager({ subreddits, onSubredditsChange }: Sub
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow">
+    <div className="bg-white p-6 rounded-xl shadow-soft border border-gray-100">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-semibold text-gray-900">Subreddits ({subreddits.length})</h2>
+        <h2 className="text-xl font-bold text-gray-900">Subreddits ({subreddits.length})</h2>
         <button
           onClick={() => setIsAdding(!isAdding)}
-          className="text-blue-600 hover:text-blue-700 font-medium"
+          className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
         >
           {isAdding ? 'Cancel' : '+ Add Subreddit'}
         </button>
       </div>
 
       {isAdding && (
-        <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+        <div className="mb-4 p-5 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl border border-gray-200 space-y-3">
           <input
             type="text"
             placeholder="Subreddit name (e.g., r/startups or startups) *"
             value={newSubreddit.name}
             onChange={(e) => setNewSubreddit({ ...newSubreddit, name: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-white"
           />
           <textarea
             placeholder="Description (optional)"
             value={newSubreddit.description}
             onChange={(e) => setNewSubreddit({ ...newSubreddit, description: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-white"
           />
           <div>
             <label className="block text-sm text-gray-700 mb-1">
@@ -86,7 +86,7 @@ export default function SubredditManager({ subreddits, onSubredditsChange }: Sub
                 ...newSubreddit, 
                 post_frequency_limit: parseInt(e.target.value) || 2 
               })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all bg-white"
             />
           </div>
           <button
@@ -112,7 +112,7 @@ export default function SubredditManager({ subreddits, onSubredditsChange }: Sub
             </div>
             <button
               onClick={() => handleRemoveSubreddit(index)}
-              className="text-red-600 hover:text-red-700 ml-2"
+              className="text-red-600 hover:text-red-700 ml-2 font-medium text-sm transition-colors"
             >
               Remove
             </button>
