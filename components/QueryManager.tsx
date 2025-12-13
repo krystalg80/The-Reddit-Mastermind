@@ -9,7 +9,7 @@ interface QueryManagerProps {
   onQueriesChange: (queries: ChatGPTQuery[]) => void;
 }
 
-export default function QueryManager({ queries, onQueriesChange }: QueryManagerProps) {
+export default function QueryManager({ companyId, queries, onQueriesChange }: QueryManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newQuery, setNewQuery] = useState<Partial<ChatGPTQuery>>({
     query: '',

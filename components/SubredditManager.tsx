@@ -9,7 +9,7 @@ interface SubredditManagerProps {
   onSubredditsChange: (subreddits: Subreddit[]) => void;
 }
 
-export default function SubredditManager({ subreddits, onSubredditsChange }: SubredditManagerProps) {
+export default function SubredditManager({ companyId, subreddits, onSubredditsChange }: SubredditManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newSubreddit, setNewSubreddit] = useState<Partial<Subreddit>>({
     name: '',

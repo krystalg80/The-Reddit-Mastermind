@@ -9,7 +9,7 @@ interface PersonaManagerProps {
   onPersonasChange: (personas: Persona[]) => void;
 }
 
-export default function PersonaManager({ personas, onPersonasChange }: PersonaManagerProps) {
+export default function PersonaManager({ companyId, personas, onPersonasChange }: PersonaManagerProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [newPersona, setNewPersona] = useState<Partial<Persona>>({
     name: '',
