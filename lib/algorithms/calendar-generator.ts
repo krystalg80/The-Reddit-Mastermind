@@ -454,7 +454,7 @@ export class CalendarGenerator {
   }
 
   /**
-   * Generate comment content
+   * Generate comment content - varied and natural responses
    */
   private generateCommentContent(
     originalPost: CalendarPost,
@@ -463,38 +463,270 @@ export class CalendarGenerator {
     const tone = commenter.tone;
     const expertise = commenter.expertise_areas.join(', ');
     
+    // Extract actual topic/keywords from the post title (remove question words)
+    const keyTerms = this.extractTopicFromTitle(originalPost.title);
+    
+    // Different comment types for variety
+    const commentTypes = [
+      'share_experience',
+      'add_value',
+      'agree_and_expand',
+      'ask_followup',
+      'provide_tip',
+      'relate_personally'
+    ];
+    const commentType = commentTypes[Math.floor(Math.random() * commentTypes.length)];
+    
     let content = '';
     
     if (tone === 'casual') {
-      content = `Great question! `;
-      if (expertise) {
-        content += `I've been working with ${expertise} for a while, `;
+      switch (commentType) {
+        case 'share_experience':
+          content = `I've actually been using ${keyTerms} for a while now. `;
+          if (expertise) {
+            content += `Coming from ${expertise}, `;
+          }
+          content += `it's been pretty solid for my workflow. `;
+          content += `The main thing I'd watch out for with ${keyTerms} is making sure it fits your specific use case.`;
+          break;
+        case 'add_value':
+          content = `This is a solid question about ${keyTerms}. `;
+          if (expertise) {
+            content += `I work in ${expertise} and `;
+          }
+          content += `one thing that's helped me with ${keyTerms} is focusing on the fundamentals first. `;
+          content += `Once you get those down, the rest falls into place.`;
+          break;
+        case 'agree_and_expand':
+          content = `Totally agree with this. `;
+          if (expertise) {
+            content += `In my experience with ${expertise}, `;
+          }
+          content += `I've noticed that ${keyTerms} works best when you pair it with good planning. `;
+          content += `What's your main use case for ${keyTerms}?`;
+          break;
+        case 'ask_followup':
+          content = `Interesting question about ${keyTerms}! `;
+          if (expertise) {
+            content += `I'm curious - in ${expertise}, `;
+          }
+          content += `what specific challenges are you running into? `;
+          content += `Might be able to share some relevant insights based on my experience with ${keyTerms}.`;
+          break;
+        case 'provide_tip':
+          content = `Quick tip about ${keyTerms}: `;
+          if (expertise) {
+            content += `since you're in ${expertise}, `;
+          }
+          content += `I'd recommend starting small and then scaling up. `;
+          content += `That's what worked for me with ${keyTerms} anyway.`;
+          break;
+        default: // relate_personally
+          content = `I was in a similar spot not too long ago with ${keyTerms}. `;
+          if (expertise) {
+            content += `Working with ${expertise}, `;
+          }
+          content += `I found that it really depends on your specific situation. `;
+          content += `What's your main goal with ${keyTerms}?`;
       }
-      content += `and here's what I've found...`;
     } else if (tone === 'professional') {
-      content = `Thanks for bringing this up. `;
-      if (expertise) {
-        content += `From my experience in ${expertise}, `;
+      switch (commentType) {
+        case 'share_experience':
+          content = `I've implemented ${keyTerms} in several projects. `;
+          if (expertise) {
+            content += `With a background in ${expertise}, `;
+          }
+          content += `I can share that the key is understanding your requirements first. `;
+          content += `Have you mapped those out yet?`;
+          break;
+        case 'add_value':
+          content = `This is an important consideration. `;
+          if (expertise) {
+            content += `From my perspective in ${expertise}, `;
+          }
+          content += `I'd recommend evaluating ${keyTerms} against your specific objectives. `;
+          content += `What metrics matter most for your use case?`;
+          break;
+        case 'agree_and_expand':
+          content = `I agree with this approach. `;
+          if (expertise) {
+            content += `In ${expertise}, we've found that `;
+          }
+          content += `${keyTerms} tends to work well when integrated thoughtfully. `;
+          content += `Have you considered the long-term implications?`;
+          break;
+        case 'ask_followup':
+          content = `To better understand your situation: `;
+          if (expertise) {
+            content += `are you working within ${expertise}? `;
+          }
+          content += `The context would help me provide more targeted advice about ${keyTerms}.`;
+          break;
+        case 'provide_tip':
+          content = `One recommendation: `;
+          if (expertise) {
+            content += `based on ${expertise} best practices, `;
+          }
+          content += `I'd suggest starting with a pilot for ${keyTerms} before full implementation. `;
+          content += `This allows you to validate the approach.`;
+          break;
+        default: // relate_personally
+          content = `I've encountered similar challenges. `;
+          if (expertise) {
+            content += `In ${expertise}, `;
+          }
+          content += `the solution often depends on your specific constraints. `;
+          content += `What's your timeline looking like for ${keyTerms}?`;
       }
-      content += `I'd add that...`;
     } else if (tone === 'technical') {
-      content = `Good point. `;
-      if (expertise) {
-        content += `In ${expertise}, we typically see... `;
+      switch (commentType) {
+        case 'share_experience':
+          content = `I've been working with ${keyTerms} for a bit. `;
+          if (expertise) {
+            content += `From a ${expertise} standpoint, `;
+          }
+          content += `the technical implementation is pretty straightforward once you understand the architecture. `;
+          content += `Are you looking at any specific technical requirements?`;
+          break;
+        case 'add_value':
+          content = `Good question. `;
+          if (expertise) {
+            content += `In ${expertise}, `;
+          }
+          content += `there are a few technical considerations with ${keyTerms} worth noting. `;
+          content += `The main ones are performance, scalability, and integration points.`;
+          break;
+        case 'agree_and_expand':
+          content = `This aligns with what I've seen. `;
+          if (expertise) {
+            content += `Technically speaking, in ${expertise}, `;
+          }
+          content += `${keyTerms} works well when you have the right infrastructure. `;
+          content += `What's your current setup looking like?`;
+          break;
+        case 'ask_followup':
+          content = `To dive deeper: `;
+          if (expertise) {
+            content += `what's your experience level with ${expertise}? `;
+          }
+          content += `That would help me tailor the technical advice for ${keyTerms}.`;
+          break;
+        case 'provide_tip':
+          content = `Technical tip: `;
+          if (expertise) {
+            content += `if you're working with ${expertise}, `;
+          }
+          content += `make sure to consider the API limitations and rate limits for ${keyTerms}. `;
+          content += `That's caught me off guard before.`;
+          break;
+        default: // relate_personally
+          content = `I've debugged similar issues. `;
+          if (expertise) {
+            content += `In ${expertise}, `;
+          }
+          content += `the problem with ${keyTerms} often comes down to configuration. `;
+          content += `What environment are you running this in?`;
       }
-      content += `Here's a technical perspective:`;
     } else if (tone === 'friendly') {
-      content = `Love this discussion! `;
-      if (expertise) {
-        content += `I work with ${expertise} and have found that... `;
+      switch (commentType) {
+        case 'share_experience':
+          content = `Hey! I've been using ${keyTerms} and it's been great so far. `;
+          if (expertise) {
+            content += `I'm in ${expertise}, `;
+          }
+          content += `so if that's relevant to you, happy to share what's worked! `;
+          content += `What are you hoping to get out of it?`;
+          break;
+        case 'add_value':
+          content = `Love that you're asking about ${keyTerms}! `;
+          if (expertise) {
+            content += `I work with ${expertise} and `;
+          }
+          content += `I think it could be a good fit depending on your needs. `;
+          content += `What specific features are you looking for in ${keyTerms}?`;
+          break;
+        case 'agree_and_expand':
+          content = `Yes! This is exactly what I was thinking. `;
+          if (expertise) {
+            content += `From my ${expertise} perspective, `;
+          }
+          content += `${keyTerms} has been a game changer. `;
+          content += `Have you tried it yet, or still researching?`;
+          break;
+        case 'ask_followup':
+          content = `Ooh, good question! `;
+          if (expertise) {
+            content += `Are you working in ${expertise}? `;
+          }
+          content += `That would help me give you better advice about ${keyTerms}. `;
+          content += `What's your main use case?`;
+          break;
+        case 'provide_tip':
+          content = `Quick heads up: `;
+          if (expertise) {
+            content += `if you're in ${expertise}, `;
+          }
+          content += `I'd suggest starting with the basics of ${keyTerms} and building from there. `;
+          content += `That's what worked for me!`;
+          break;
+        default: // relate_personally
+          content = `I was asking the same thing a few months ago! `;
+          if (expertise) {
+            content += `Coming from ${expertise}, `;
+          }
+          content += `I found that ${keyTerms} really depends on what you're trying to accomplish. `;
+          content += `What's your situation?`;
       }
-      content += `Hope this helps!`;
     } else { // humorous
-      content = `Ha! I've been there. `;
-      if (expertise) {
-        content += `As someone who's dealt with ${expertise}, `;
+      switch (commentType) {
+        case 'share_experience':
+          content = `Oh man, I've been down this rabbit hole! `;
+          if (expertise) {
+            content += `As someone who's dealt with ${expertise}, `;
+          }
+          content += `I can tell you ${keyTerms} is... interesting. `;
+          content += `It's great until it isn't, you know? 😅`;
+          break;
+        case 'add_value':
+          content = `Haha, I feel this. `;
+          if (expertise) {
+            content += `In the world of ${expertise}, `;
+          }
+          content += `${keyTerms} is one of those things that sounds simple but gets complicated fast. `;
+          content += `What's your experience been so far?`;
+          break;
+        case 'agree_and_expand':
+          content = `100% agree, but also... `;
+          if (expertise) {
+            content += `as someone in ${expertise}, `;
+          }
+          content += `I have THOUGHTS about ${keyTerms}. `;
+          content += `Want to hear my hot take? 😄`;
+          break;
+        case 'ask_followup':
+          content = `Okay but real talk: `;
+          if (expertise) {
+            content += `are you in ${expertise}? `;
+          }
+          content += `Because that changes my entire answer about ${keyTerms}. `;
+          content += `The struggle is real either way though!`;
+          break;
+        case 'provide_tip':
+          content = `Pro tip (learned the hard way): `;
+          if (expertise) {
+            content += `if you're dealing with ${expertise}, `;
+          }
+          content += `don't go all-in on ${keyTerms} right away. `;
+          content += `Start small, make mistakes, then scale. Trust me on this one!`;
+          break;
+        default: // relate_personally
+          content = `Are you me from 6 months ago? `;
+          if (expertise) {
+            content += `I was doing ${expertise} and `;
+          }
+          content += `had the exact same question about ${keyTerms}. `;
+          content += `Here's what I wish I knew then...`;
       }
-      content += `here's my two cents...`;
     }
     
     return content;
@@ -507,6 +739,54 @@ export class CalendarGenerator {
     // Simple extraction - take first 5-7 words
     const words = query.split(' ').slice(0, 7);
     return words.join(' ');
+  }
+
+  /**
+   * Extract actual topic from post title by removing question words
+   */
+  private extractTopicFromTitle(title: string): string {
+    // Common question/prefix words to remove
+    const questionWords = [
+      'has', 'anyone', 'tried', 'looking', 'for', 'advice', 'question', 'about',
+      'thoughts', 'on', 'need', 'review', 'best', 'practices', 'insights',
+      'what', 'are', 'your', 'experience', 'been', 'like', 'tips', 'things',
+      'watch', 'out', 'thanks', 'advance', 'discuss', 'with', 'this', 'community',
+      'working', 'understand', 'how', 'others', 'approach', 'topic', 'strategies',
+      'solutions', 'worked', 'well', 'you', 'curious', 'interested', 'in'
+    ];
+    
+    // Split title into words and filter out question words
+    const words = title.toLowerCase()
+      .replace(/[?.,!:-]/g, ' ') // Remove punctuation
+      .split(/\s+/)
+      .filter(word => word.length > 0 && !questionWords.includes(word));
+    
+    // Take the meaningful words (usually 3-5 words)
+    const topicWords = words.slice(0, 5);
+    
+    // If we got nothing meaningful, fall back to a simpler extraction
+    if (topicWords.length === 0) {
+      // Try to find words after common patterns
+      const patterns = [
+        /(?:has anyone tried|looking for|question about|thoughts on|need advice|review:)\s+(.+?)(?:\?|$)/i,
+        /(?:best|tools?|alternatives?|how to|ways to)\s+(.+?)(?:\?|$)/i,
+      ];
+      
+      for (const pattern of patterns) {
+        const match = title.match(pattern);
+        if (match && match[1]) {
+          const extracted = match[1].trim().split(/\s+/).slice(0, 5).join(' ');
+          if (extracted.length > 0) {
+            return extracted;
+          }
+        }
+      }
+      
+      // Last resort: take words 3-7 (skip first few question words)
+      return title.split(/\s+/).slice(2, 7).join(' ') || 'this';
+    }
+    
+    return topicWords.join(' ') || 'this';
   }
 
   /**
