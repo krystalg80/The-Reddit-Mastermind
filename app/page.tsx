@@ -213,10 +213,10 @@ export default function Home() {
             <div className="flex-1">
               <p className="font-semibold mb-1">Hi Maddie!</p>
               <p className="text-sm">
-                Just wanted to give you a heads up, I'm using the free tier of the ChatGPT API, so I do have a quota limit. 
-                If by the time you're actively testing the application you see <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">📝 Template</span> badges instead of 
+                Just wanted to give you a heads up, I&apos;m using the free tier of the ChatGPT API, so I do have a quota limit. 
+                If by the time you&apos;re actively testing the application you see <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">📝 Template</span> badges instead of 
                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200 ml-1">🤖 AI</span> badges, 
-                that's because there's no quota available due to the limit. The app will still work perfectly with the template fallbacks. 
+                that&apos;s because there&apos;s no quota available due to the limit. The app will still work perfectly with the template fallbacks. 
                 Also, generation takes ~2 minutes due to free tier rate limits (3 requests/minute) - in production with a paid tier, this would be much faster (under 10 seconds). Thank you again :)
               </p>
             </div>
@@ -340,7 +340,7 @@ export default function Home() {
                     Generating...
                   </span>
                 ) : (
-                  'Generate This Week\'s Calendar'
+                  "Generate This Week's Calendar"
                 )}
               </button>
               
@@ -382,7 +382,7 @@ export default function Home() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   <p className="text-gray-600 font-medium mb-2">No calendar generated yet.</p>
-                  <p className="text-sm text-gray-500">Fill in the form and click "Generate This Week's Calendar" to get started.</p>
+                  <p className="text-sm text-gray-500">Fill in the form and click &quot;Generate This Week&apos;s Calendar&quot; to get started.</p>
                 </div>
               </div>
             )}
