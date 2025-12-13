@@ -28,7 +28,7 @@ Built a full web app with:
 
 ### 1. Content Generation Algorithm
 
-The heart of the app is the `CalendarGenerator` class that:
+The `CalendarGenerator` class that:
 - Distributes posts evenly across the week
 - Selects subreddits with weighted randomness (avoids overposting)
 - Ensures persona variety (no back-to-back same persona)
@@ -43,17 +43,17 @@ I integrated the OpenAI API for more natural content:
 - Post content that matches persona bio and expertise
 - Comments that actually respond to the original post context
 
-**Important**: I'm using the free tier, so there's rate limiting (3 requests/minute). The app includes intelligent fallbacks - if ChatGPT quota is exceeded, it automatically uses high-quality templates. This is actually a feature, not a bug - it shows production-ready error handling!
+**Important**: I'm using the free tier, so there's rate limiting (3 requests/minute). The app includes intelligent fallbacks that had to be hardcoded but is used incase of a Fallback is needed.
 
 ### 3. Fallback System
 
-When ChatGPT isn't available (quota exceeded, API errors, etc.), the app falls back to template-based generation. I spent a lot of time making these templates natural:
+When ChatGPT isn't available (quota exceeded, API errors, etc.), the app falls back to template-based generation. Wanted to make sure these templates felt natural:
 - Handles comparison questions properly (e.g., "Claude vs Slideforge")
 - Varied comment types (share experience, add value, ask follow-up, etc.)
 - Different tones (casual, professional, technical, friendly, humorous)
 - Context-aware responses
 
-You can see which content came from ChatGPT vs templates using the badges (🤖 AI vs 📝 Template).
+You can see which content came from ChatGPT vs templates using the badges (🤖 AI vs 📝 Template). This was added only so you could understand whats happening behind the scenes, realistically this wouldn't be on a published site more for a development side.
 
 ### 4. Quality Scoring
 
@@ -63,18 +63,20 @@ Each calendar gets a quality score (0-10) based on:
 - Topic diversity
 - Comment-to-post ratio (natural conversation flow)
 - Time distribution across the week
+- MOST LIKELY you will recieve a 10/10 because the goal from my end is to not deliver anything under a 10! 
 
 ### 5. CSV Import
 
-You can import data from Google Sheets. The importer handles:
+Had to install a CSV Importer! The importer handles:
 - Transposed CSV formats (field names in first column)
 - Multi-line fields (persona bios with line breaks)
 - Combined sheets (company + personas + queries in one file)
 - Flexible field name matching
+- Makes it easier so you could just upload the sample data created in google sheets!
 
 ### 6. Data Persistence
 
-- Auto-saves to localStorage (survives page refreshes)
+- Auto-saves to localStorage (survives page refreshes) 
 - Saves to Supabase database (persists across sessions)
 - Clear Data button to reset everything
 
@@ -84,7 +86,7 @@ You can import data from Google Sheets. The importer handles:
 
 - Node.js 20.9.0+
 - Supabase account (free tier works)
-- OpenAI API key (optional - app works without it)
+- OpenAI API key (app also works without it)
 
 ### Installation
 
@@ -99,6 +101,7 @@ npm install
 # Set up environment variables
 cp .env.example .env.local
 # Add your Supabase URL, anon key, and OpenAI API key
+# this has been done in vercel already so not needed unless you are operating on own environment / development server.
 ```
 
 ### Database Setup
@@ -126,11 +129,11 @@ The schema includes:
 
 ## Algorithm Details
 
-
 Posts are distributed evenly across the week:
 - Calculates posts per day based on total posts per week
 - Distributes extra posts across first few days
 - Schedules posts between 9 AM - 9 PM
+- 24 HOUR CLOCK (can be edited to be a 12 hour clock based off of the users timezone and timestamps)
 
 ### Subreddit Selection
 
@@ -162,6 +165,7 @@ The algorithm evaluates:
 - **Topic diversity**: +1.5 for unique topics
 - **Comment ratio**: +1.5 for ideal ratio (0.8-1.2 comments per post)
 - **Time distribution**: +1.0 for well-spread posts
+- **SHOULD JUST BE A 10/10**
 
 ## Rate Limiting
 
@@ -226,8 +230,7 @@ If I had more time, I'd add:
 
 ## Deployment
 
-Deployed on Vercel. Make sure to set environment variables:
-
+Deployed on Vercel. Made sure to set environment variables
 
 ## Notes for Testing
 
@@ -239,10 +242,7 @@ Deployed on Vercel. Make sure to set environment variables:
 ## Development Tools
 
 I used **Cursor** to build this project. It definitely has been a new addition to the software engineering world and I may say AI really does help me deliver more efficiently in a sooner time matter as well!
-- Set up the environment and project structure quickly
-- Work through complex algorithm logic
-- Debug issues efficiently
-- Deliver a production-ready solution in a tight timeline
+
 ---
 
 Built by Krystal Galdamez
