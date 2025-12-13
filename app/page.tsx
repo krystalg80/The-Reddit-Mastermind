@@ -141,7 +141,7 @@ export default function Home() {
           </h1>
           <p className="text-gray-600 text-lg">
             Automate your Reddit content calendar with AI-powered planning ||
-            Tech Stack: Next.js, Tailwind CSS, Supabase, React, TypeScript, Vercel
+            Tech Stack: Next.js, Tailwind CSS, Supabase, React, TypeScript, Vercel, OpenAI
           </p>
         </div>
       </div>

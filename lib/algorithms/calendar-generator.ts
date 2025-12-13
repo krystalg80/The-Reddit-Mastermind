@@ -468,35 +468,78 @@ export class CalendarGenerator {
   }
 
   /**
-   * Generate post title
+   * Generate post title - improved fallback templates
    */
   private generatePostTitle(
     topic: ChatGPTQuery,
     persona: Persona,
     subreddit: Subreddit
   ): string {
-    // Base title on query intent and persona tone
     const queryLower = topic.query.toLowerCase();
+    const isComparison = queryLower.includes(' vs ') || queryLower.includes(' versus ') || queryLower.includes(' compare');
+    const keyTerms = this.extractKeyTerms(topic.query);
     
-    if (topic.intent === 'question') {
-      if (persona.tone === 'casual' || persona.tone === 'friendly') {
-        return `Has anyone tried ${this.extractKeyTerms(topic.query)}? Looking for advice`;
-      } else if (persona.tone === 'technical') {
-        return `Question about ${this.extractKeyTerms(topic.query)} - Best practices?`;
-      } else {
-        return `Looking for insights on ${this.extractKeyTerms(topic.query)}`;
-      }
-    } else if (topic.intent === 'discussion') {
-      return `Thoughts on ${this.extractKeyTerms(topic.query)}?`;
-    } else if (topic.intent === 'advice') {
-      return `Need advice: ${this.extractKeyTerms(topic.query)}`;
+    // Title variations based on intent and tone
+    const titleVariations: Record<string, string[]> = {
+      'question-casual': [
+        `Has anyone tried ${keyTerms}?`,
+        `Looking for advice on ${keyTerms}`,
+        `Anyone have experience with ${keyTerms}?`,
+        `Thoughts on ${keyTerms}?`
+      ],
+      'question-friendly': [
+        `Hey! Anyone tried ${keyTerms}?`,
+        `Looking for advice: ${keyTerms}`,
+        `What do you think about ${keyTerms}?`
+      ],
+      'question-professional': [
+        `Looking for insights on ${keyTerms}`,
+        `Question about ${keyTerms} - best practices?`,
+        `Seeking advice on ${keyTerms}`
+      ],
+      'question-technical': [
+        `Question about ${keyTerms} - best practices?`,
+        `Technical discussion: ${keyTerms}`,
+        `Looking for technical insights on ${keyTerms}`
+      ],
+      'comparison': [
+        `${keyTerms} - which is better?`,
+        `Comparing ${keyTerms}`,
+        `Has anyone tried both ${keyTerms}?`,
+        `Need help choosing: ${keyTerms}`
+      ],
+      'discussion': [
+        `Thoughts on ${keyTerms}?`,
+        `Discussion: ${keyTerms}`,
+        `What's your take on ${keyTerms}?`
+      ],
+      'advice': [
+        `Need advice: ${keyTerms}`,
+        `Looking for recommendations on ${keyTerms}`,
+        `Help choosing: ${keyTerms}`
+      ],
+      'review': [
+        `Review: ${keyTerms}`,
+        `Has anyone reviewed ${keyTerms}?`,
+        `Looking for reviews of ${keyTerms}`
+      ]
+    };
+    
+    // Select appropriate variations
+    let variations: string[] = [];
+    if (isComparison) {
+      variations = titleVariations['comparison'];
     } else {
-      return `Review: ${this.extractKeyTerms(topic.query)}`;
+      const key = `${topic.intent}-${persona.tone}`;
+      variations = titleVariations[key] || titleVariations[`${topic.intent}-casual`] || [`Question about ${keyTerms}`];
     }
+    
+    // Return random variation for naturalness
+    return variations[Math.floor(Math.random() * variations.length)];
   }
 
   /**
-   * Generate post content
+   * Generate post content - improved fallback templates
    * IF OPENAI FAILS, THIS IS THE FALLBACK!!!!
    */
   private generatePostContent(
@@ -506,11 +549,58 @@ export class CalendarGenerator {
   ): string {
     const tone = persona.tone;
     const expertise = persona.expertise_areas.join(', ');
+    const queryLower = topic.query.toLowerCase();
+    const isComparison = queryLower.includes(' vs ') || queryLower.includes(' versus ') || queryLower.includes(' compare');
     
     let content = '';
     
+    // Handle comparison questions specially
+    if (isComparison) {
+      const comparisonParts = topic.query.split(/ vs | versus | compare/i);
+      const item1 = comparisonParts[0]?.trim() || '';
+      const item2 = comparisonParts[1]?.trim() || '';
+      
+      if (tone === 'casual') {
+        content = `I'm trying to decide between ${item1} and ${item2}.\n\n`;
+        if (expertise) {
+          content += `I work in ${expertise}, so I'm looking for something that fits that workflow. `;
+        }
+        content += `Has anyone tried both? What are the main differences you noticed?\n\n`;
+        content += `I'd love to hear your experiences with either one!`;
+      } else if (tone === 'professional') {
+        content = `I'm evaluating ${item1} versus ${item2} for my use case.\n\n`;
+        if (expertise) {
+          content += `My background is in ${expertise}, and I'm looking for the best fit. `;
+        }
+        content += `Has anyone compared these? What were the key factors in your decision?\n\n`;
+        content += `Appreciate any insights!`;
+      } else if (tone === 'friendly') {
+        content = `Hi r/${subreddit.name}! 👋\n\n`;
+        content += `I'm trying to choose between ${item1} and ${item2}. `;
+        if (expertise) {
+          content += `I have some experience with ${expertise}, `;
+        }
+        content += `but I'd love to hear what you all think!\n\n`;
+        content += `What's been your experience with either one?`;
+      } else {
+        content = `Looking to compare ${item1} and ${item2}.\n\n`;
+        if (expertise) {
+          content += `I'm working with ${expertise} and `;
+        }
+        content += `trying to figure out which would work better. Any thoughts?`;
+      }
+      return content;
+    }
+    
+    // Regular questions
     if (tone === 'casual') {
-      content = `Hey everyone! I've been thinking about ${topic.query} and wanted to get your thoughts.\n\n`;
+      const openings = [
+        `Hey everyone! I've been looking into ${topic.query} and wanted to get your thoughts.`,
+        `Anyone have experience with ${topic.query}?`,
+        `I'm curious about ${topic.query} - what's everyone's take?`
+      ];
+      content = openings[Math.floor(Math.random() * openings.length)] + '\n\n';
+      
       if (expertise) {
         content += `I work in ${expertise}, so I'm coming at this from that angle. `;
       }
@@ -590,12 +680,35 @@ export class CalendarGenerator {
     // Use the actual topic query if available, otherwise extract from title
     const keyTerms = topic ? topic.query : this.extractTopicFromTitle(originalPost.title);
     const intent = topic?.intent || 'question';
+    const keyTermsLower = keyTerms.toLowerCase();
+    
+    // Detect comparison questions
+    const isComparison = keyTermsLower.includes(' vs ') || keyTermsLower.includes(' versus ') || 
+                        keyTermsLower.includes(' compare') || originalPost.title.toLowerCase().includes(' vs ') ||
+                        originalPost.title.toLowerCase().includes('versus') || originalPost.title.toLowerCase().includes('comparing');
+    
+    // Extract comparison items if it's a comparison
+    let comparisonItem1 = '';
+    let comparisonItem2 = '';
+    if (isComparison) {
+      const comparisonMatch = keyTerms.match(/(.+?)\s+(?:vs|versus|compare)\s+(.+)/i) || 
+                             originalPost.title.match(/(.+?)\s+(?:vs|versus|comparing)\s+(.+)/i);
+      if (comparisonMatch) {
+        comparisonItem1 = comparisonMatch[1]?.trim() || '';
+        comparisonItem2 = comparisonMatch[2]?.trim() || '';
+      } else {
+        // Fallback: try to split on common patterns
+        const parts = keyTerms.split(/ vs | versus | compare/i);
+        comparisonItem1 = parts[0]?.trim() || '';
+        comparisonItem2 = parts[1]?.trim() || '';
+      }
+    }
     
     // Determine if this is a tool/product name vs a question/how-to
-    const isToolOrProduct = this.isToolOrProduct(keyTerms);
-    const isHowToQuestion = keyTerms.toLowerCase().includes('how to') || 
-                            keyTerms.toLowerCase().includes('how do') ||
-                            keyTerms.toLowerCase().startsWith('how');
+    const isToolOrProduct = this.isToolOrProduct(keyTerms) && !isComparison;
+    const isHowToQuestion = keyTermsLower.includes('how to') || 
+                            keyTermsLower.includes('how do') ||
+                            keyTermsLower.startsWith('how');
     
     // Determine what the post is asking for based on intent
     const isAskingForRecommendation = intent === 'question' || intent === 'advice';
@@ -618,7 +731,28 @@ export class CalendarGenerator {
     if (tone === 'casual') {
       switch (commentType) {
         case 'share_experience':
-          if (isToolOrProduct && isAskingForRecommendation) {
+          if (isComparison) {
+            // Handle comparison comments properly
+            if (comparisonItem1 && comparisonItem2) {
+              content = `I've used both ${comparisonItem1} and ${comparisonItem2}. `;
+              if (expertise) {
+                content += `I'm in ${expertise}, `;
+              }
+              const usedMore = Math.random() > 0.5 ? comparisonItem1 : comparisonItem2;
+              content += `and I've spent more time with ${usedMore}. `;
+              content += `It's been working really well for my workflow. `;
+              content += `The other one was fine, but ${usedMore} just clicked better for me. `;
+              content += `What are you hoping to use it for?`;
+            } else {
+              content = `I've tried both options. `;
+              if (expertise) {
+                content += `In ${expertise}, `;
+              }
+              content += `they're both solid choices. `;
+              content += `The main difference for me was the learning curve and how well it fit my existing workflow. `;
+              content += `What's your main use case?`;
+            }
+          } else if (isToolOrProduct && isAskingForRecommendation) {
             content = `I've been using ${keyTerms} for about 6 months now. `;
             if (expertise) {
               content += `I'm in ${expertise}, `;
@@ -644,7 +778,35 @@ export class CalendarGenerator {
           }
           break;
         case 'add_value':
-          if (isToolOrProduct && isAskingForRecommendation) {
+          if (isComparison) {
+            // Handle comparison comments properly
+            if (comparisonItem1 && comparisonItem2) {
+              content = `I've tried both ${comparisonItem1} and ${comparisonItem2}. `;
+              if (expertise) {
+                content += `In ${expertise}, `;
+              }
+              const preferred = Math.random() > 0.5 ? comparisonItem1 : comparisonItem2;
+              const other = preferred === comparisonItem1 ? comparisonItem2 : comparisonItem1;
+              content += `I ended up going with ${preferred} because `;
+              const reasons = [
+                `it fit my workflow better`,
+                `the interface was more intuitive`,
+                `it had better integration options`,
+                `it was faster for my use case`,
+                `the learning curve was gentler`
+              ];
+              content += reasons[Math.floor(Math.random() * reasons.length)] + `. `;
+              content += `${other} was solid too, but ${preferred} just worked better for me. `;
+              content += `What are you planning to use it for?`;
+            } else {
+              content = `I've tried both options you mentioned. `;
+              if (expertise) {
+                content += `From a ${expertise} perspective, `;
+              }
+              content += `they each have their strengths. `;
+              content += `What's your main use case? That might help narrow it down.`;
+            }
+          } else if (isToolOrProduct && isAskingForRecommendation) {
             content = `I'd definitely recommend checking out ${keyTerms}. `;
             if (expertise) {
               content += `I work in ${expertise} and `;
@@ -1100,30 +1262,57 @@ export class CalendarGenerator {
 
   /**
    * Calculate quality score for the generated calendar
+   * 
+   * Evaluates:
+   * - Subreddit posting limits (avoiding overposting)
+   * - Persona variety and distribution
+   * - Topic diversity
+   * - Comment-to-post ratio (natural conversation flow)
+   * - Time distribution across the week
+   * 
+   * Score range: 0-10
+   * - 9-10: Excellent (well-distributed, natural, diverse)
+   * - 7-8: Good (minor issues)
+   * - 5-6: Fair (some problems)
+   * - 0-4: Poor (significant issues)
    */
   private calculateQualityScore(posts: CalendarPost[]): number {
-    let score = 10.0;
+    let score = 5.0; // Start at base score, earn points for quality
     
-    // Check for overposting in subreddits
+    const originalPosts = posts.filter(p => p.post_type === 'original');
+    const comments = posts.filter(p => p.post_type === 'comment');
+    
+    if (originalPosts.length === 0) {
+      return 0; // No posts = no quality
+    }
+    
+    // 1. SUBREDDIT POSTING LIMITS (max +2 points, -1.5 per violation)
+    let subredditScore = 2.0;
     const subredditCounts: Map<string, number> = new Map();
-    posts.forEach(post => {
-      if (post.post_type === 'original') {
-        const count = subredditCounts.get(post.subreddit_id) || 0;
-        subredditCounts.set(post.subreddit_id, count + 1);
-      }
+    originalPosts.forEach(post => {
+      const count = subredditCounts.get(post.subreddit_id) || 0;
+      subredditCounts.set(post.subreddit_id, count + 1);
     });
     
+    let overpostingViolations = 0;
     subredditCounts.forEach((count, subredditId) => {
       const subreddit = this.input.subreddits.find(s => 
         (s.id || s.name) === subredditId
       );
       const limit = subreddit?.post_frequency_limit || 2;
       if (count > limit) {
-        score -= 1.5; // Penalty for overposting
+        overpostingViolations++;
+        subredditScore -= 1.5; // Penalty per violation
       }
     });
     
-    // Check for persona variety
+    // Bonus if no violations
+    if (overpostingViolations === 0) {
+      subredditScore = 2.0;
+    }
+    score += Math.max(0, subredditScore);
+    
+    // 2. PERSONA VARIETY (max +1.5 points)
     const personaCounts: Map<string, number> = new Map();
     posts.forEach(post => {
       const count = personaCounts.get(post.persona_id) || 0;
@@ -1134,46 +1323,75 @@ export class CalendarGenerator {
     const maxPersonaPosts = Math.max(...personaValues);
     const minPersonaPosts = Math.min(...personaValues);
     const personaSpread = maxPersonaPosts - minPersonaPosts;
+    const uniquePersonas = personaCounts.size;
     
-    if (personaSpread > 3) {
-      score -= 1.0; // Penalty for uneven distribution
+    let personaScore = 0;
+    if (personaSpread <= 1) {
+      personaScore = 1.5; // Excellent distribution
+    } else if (personaSpread <= 2) {
+      personaScore = 1.0; // Good distribution
+    } else if (personaSpread <= 3) {
+      personaScore = 0.5; // Fair distribution
     }
+    // Bonus for using multiple personas
+    if (uniquePersonas >= 3) {
+      personaScore += 0.3;
+    }
+    score += Math.min(1.5, personaScore);
     
-    // Check for topic diversity
+    // 3. TOPIC DIVERSITY (max +1.5 points)
     const uniqueTopics = new Set(
-      posts
-        .filter(p => p.post_type === 'original')
-        .map(p => p.title)
+      originalPosts.map(p => p.title.toLowerCase().trim())
     );
+    const topicDiversityRatio = uniqueTopics.size / originalPosts.length;
     
-    if (uniqueTopics.size < posts.filter(p => p.post_type === 'original').length * 0.7) {
-      score -= 1.0; // Penalty for repetitive topics
+    let topicScore = 0;
+    if (topicDiversityRatio >= 0.9) {
+      topicScore = 1.5; // Excellent diversity (all unique)
+    } else if (topicDiversityRatio >= 0.7) {
+      topicScore = 1.0; // Good diversity
+    } else if (topicDiversityRatio >= 0.5) {
+      topicScore = 0.5; // Fair diversity
     }
+    score += topicScore;
     
-    // Check for natural conversation flow (comments responding to posts)
-    const originalPosts = posts.filter(p => p.post_type === 'original');
-    const comments = posts.filter(p => p.post_type === 'comment');
+    // 4. COMMENT-TO-POST RATIO (max +1.5 points)
+    // Ideal: 0.8-1.2 comments per post (natural conversation)
     const commentRatio = comments.length / originalPosts.length;
     
-    if (commentRatio < 0.3) {
-      score -= 0.5; // Not enough conversation
-    } else if (commentRatio > 1.5) {
-      score -= 0.5; // Too many comments, looks artificial
+    let commentScore = 0;
+    if (commentRatio >= 0.8 && commentRatio <= 1.2) {
+      commentScore = 1.5; // Perfect ratio
+    } else if (commentRatio >= 0.6 && commentRatio <= 1.5) {
+      commentScore = 1.0; // Good ratio
+    } else if (commentRatio >= 0.4 && commentRatio <= 2.0) {
+      commentScore = 0.5; // Acceptable ratio
+    } else if (commentRatio < 0.3) {
+      commentScore = -0.5; // Too few comments
+    } else {
+      commentScore = -0.5; // Too many comments (looks artificial)
     }
+    score += commentScore;
     
-    // Check for time distribution
+    // 5. TIME DISTRIBUTION (max +1.0 points)
     const timeSlots: Set<string> = new Set();
     posts.forEach(post => {
       timeSlots.add(`${post.scheduled_date}-${post.scheduled_time.substring(0, 2)}`);
     });
     
     const timeSpread = timeSlots.size / posts.length;
-    if (timeSpread < 0.5) {
-      score -= 0.5; // Posts too clustered in time
+    let timeScore = 0;
+    if (timeSpread >= 0.7) {
+      timeScore = 1.0; // Excellent distribution
+    } else if (timeSpread >= 0.5) {
+      timeScore = 0.5; // Good distribution
+    } else if (timeSpread < 0.3) {
+      timeScore = -0.5; // Too clustered
     }
+    score += timeScore;
     
-    // Ensure score is between 0 and 10
-    return Math.max(0, Math.min(10, score));
+    // Ensure score is between 0 and 10, round to 1 decimal
+    return Math.round(Math.max(0, Math.min(10, score)) * 10) / 10;
   }
 }
 
